@@ -1,0 +1,193 @@
+Turbo Assembler	 Version 3.1	    10/11/16 15:24:48	    Page 1
+pirmat.asm
+
+
+
+      1				     ; Uzduoties salyga: programa pagal	ivesta teksta pakeicia tarpu
+      2				     ;					     simbolius pries tai esanciu simboliu
+      3				     ; Atliko: Martynas	Joksas
+      4
+      5	0000			     .model small
+      6	0000			     .stack 100h
+      7
+      8	0000			     .data
+      9	0000  50 72 6F 67 72 61	6D+	     request	     db	'Programa ivestoje eiluteje visus tarpo	simbolius pakeicia pries    +
+     10	      61 20 69 76 65 73	74+  juos einanciu simbobliu (jei tarpas pradzioje, paliekamas tarpas).', 0Dh, 0Ah, 'Iveskite	    +
+     11	      6F 6A 65 20 65 69	6C+  simboliu eilute:',	0Dh, 0Ah, '$'
+     12	      75 74 65 6A 65 20	76+
+     13	      69 73 75 73 20 74	61+
+     14	      72 70 6F 20 73 69	6D+
+     15	      62 6F 6C 69 75 73	20+
+     16	      70 61 6B 65 69 63	69+
+     17	      61 20 70 72 69 65	73+
+     18	      20 6A 75 6F 73 20	65+
+     19	      69 6E 61 6E 63 69	75+
+     20	      20 73 69 6D 62 6F	62+
+     21	      6C 69 75 20 28 6A	65+
+     22	      69 20 74 61 72 70	61+
+     23	      73 20 70 72 61 64	7A+
+     24	      69 6F 6A 65 2C 20	70+
+     25	      61 6C 69 65 6B 61	6D+
+     26	      61 73 20 74 61 72	70+
+     27	      61 73 29 2E 0D 0A	49+
+     28	      76 65 73 6B 69 74	65+
+     29	      20 73 69 6D 62 6F	6C+
+     30	      69 75 20 65 69 6C	75+
+     31	      74 65 3A 0D 0A 24
+     32	00A0  0D 0A 52 65 7A 75	6C+	     result	     db	0Dh, 0Ah, 'Rezultatas:', 0Dh, 0Ah, '$'
+     33	      74 61 74 61 73 3A	0D+
+     34	      0A 24
+     35	00B0  20 28 74 61 72 70	75+	     space	     db	' (tarpu: ', '$'
+     36	      3A 20 24
+     37	00BA  64			     buffer	     db	100 ; cia skaitysim eilute
+     38	00BB  30 31 32 33 34 35	36+	     hex db "0123456789ABCDEF"
+     39	      37 38 39 41 42 43	44+
+     40	      45 46
+     41	00CB  00 00 00			     hexnum db 0, 0, 0
+     42
+     43	00CE			     .code
+     44
+     45	0000			     start:
+     46	0000  B8 0000s			     MOV ax, @data		     ; perkelti	data i registra	ax
+     47	0003  8E D8			     MOV ds, ax			     ; perkelti	ax (data) i data segmenta
+     48
+     49					     ; Isvesti uzklausa
+     50	0005  B4 09			     MOV ah, 09h
+     51	0007  BA 0000r			     MOV dx, offset request
+     52	000A  CD 21			     int 21h
+     53
+     54					     ; skaityti	eilute
+     55	000C  BA 00BAr			     MOV dx, offset buffer	     ; skaityti	i buffer offseta
+     56	000F  B4 0A			     MOV ah, 0Ah		     ; eilutes skaitymo	subprograma
+     57	0011  CD 21			     INT 21h			     ; dos'o INTeruptas
+Turbo Assembler	 Version 3.1	    10/11/16 15:24:48	    Page 2
+pirmat.asm
+
+
+
+     58
+     59					     ; kartoti
+     60	0013  BE 00BAr			     MOV si, offset buffer	     ; priskirti source	index'ui bufferio koordinates
+     61	0016  46			     INC si			     ; pridedam	1 prie si , nes	pirmas kiek simboliu ish viso
+     62	0017  8A 3C			     MOV bh, [si]		     ; idedam i	bh kiek	simboliu is viso
+     63	0019  46			     INC si			     ; pereiname prie pacio simbolio
+     64
+     65					     ; isvesti:
+     66	001A  B4 09			     MOV ah, 09h
+     67	001C  BA 00A0r			     MOV dx, offset result
+     68	001F  CD 21			     INT 21h
+     69
+     70	0021  B3 20			     MOV bl, ' '					     ; begin value
+     71
+     72	0023  8A CF			     MOV cl, bh						     ; loop darysim tiek, kiek yra  +
+     73				     tekste simboliu
+     74	0025  B5 00			     MOV ch, 0
+     75	0027  B7 00			     MOV bh, 00h
+     76
+     77				     ; 1. imsime simboli
+     78				     ; 2. eisime prie kito simbolio
+     79				     ; 3. jei tarpas - spausdinsime pries tai buvusi simboli
+     80				     ; 4. jei ne tarpas	- tai pakeisime	registro reiksme nauja
+     81				     ; 5. isspausdinsime tarpu kieki
+     82
+     83	0029			     char:
+     84	0029  AC			     LODSB			     ; imti is es:si stringo dali ir dedame i al
+     85	002A  3C 0D			     CMP al, 0dh		     ; jei char	0
+     86	002C  74 17			     JZ	ending			     ; tai sokame i klaida
+     87
+     88	002E  3C 20			     CMP al, ' '
+     89	0030  74 0D			     JE	putLetter				     ; if yes, jump to putLetter
+     90	0032  8A D8			     mov bl, al						     ; put current symbol to bl
+     91	0034			     _1:
+     92	0034  B4 02			     MOV ah, 2			     ; isvedimui vieno simbolio
+     93	0036  8A D0			     MOV dl, al			     ; i dl padeti simboli is al
+     94	0038  CD 21			     INT 21h			     ; dos'o INTeruptas
+     95	003A  E2 ED			     LOOP char
+     96
+     97	003C  EB 07 90			     JMP ending
+     98
+     99	003F			     putLetter:
+    100	003F  8A C3			     MOV al, bl
+    101	0041  FE C7			     INC bh
+    102	0043  EB EF			     JMP _1
+    103
+    104	0045			     ending:
+    105					     ; isvesti kiek tarpu (bh registre)
+    106	0045  B4 09			     MOV ah, 09h
+    107	0047  BA 00B0r			     MOV dx, offset space
+    108	004A  CD 21			     INT 21h
+    109
+    110	004C  8A C7			     MOV  al, bh				     ; i al pasidedam skaiciu, kuri	    +
+    111				     spausdinsim										    +
+    112				     ; source: http://stackoverflow.com/questions/34254461/assembly-basics-output-register-value
+    113	004E  D4 0A			     AAM						     ; Ascii adjust for		    +
+    114				     multipliation : ah:=al div	10; al:=al mod 10
+Turbo Assembler	 Version 3.1	    10/11/16 15:24:48	    Page 3
+pirmat.asm
+
+
+
+    115	0050  05 3030			     ADD  ax, "00"			     ; pavercia	desimtainiu skaiciu
+    116	0053  86 C4			     XCHG al, ah				     ; sukeicia	registro baitus	vietomis
+    117
+    118	0055  8B D0			     MOV  dx, ax
+    119	0057  B4 02			     MOV  ah, 02h			     ; int 21,02 spausdina ekrane dl
+    120	0059  CD 21			     INT  21h
+    121
+    122	005B  8A D6			     MOV  dl, dh				     ; isspausdinam ir dh
+    123	005D  CD 21			     INT  21h
+    124
+    125					     ;;
+    126					     ;;
+    127
+    128
+    129	005F  B4 02			     MOV ah, 02h
+    130	0061  B2 29			     MOV dl, ')'					     ; skliausto pabaigos simbolis
+    131	0063  CD 21			     INT 21h
+    132	0065  B8 4C00			     MOV ax, 4c00h				     ; griztame	i dos'a
+    133	0068  CD 21			     INT 21h			     ; dos'o INTeruptas
+    134
+    135				     end start
+Turbo Assembler	 Version 3.1	    10/11/16 15:24:48	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "10/11/16"
+??FILENAME			  Text	 "pirmat  "
+??TIME				  Text	 "15:24:48"
+??VERSION			  Number 030A
+@32BIT				  Text	 0
+@CODE				  Text	 _TEXT
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PIRMAT
+@INTERFACE			  Text	 00H
+@MODEL				  Text	 2
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+BUFFER				  Byte	 DGROUP:00BA
+CHAR				  Near	 _TEXT:0029
+ENDING				  Near	 _TEXT:0045
+HEX				  Byte	 DGROUP:00BB
+HEXNUM				  Byte	 DGROUP:00CB
+PUTLETTER			  Near	 _TEXT:003F
+REQUEST				  Byte	 DGROUP:0000
+RESULT				  Byte	 DGROUP:00A0
+SPACE				  Byte	 DGROUP:00B0
+START				  Near	 _TEXT:0000
+_1				  Near	 _TEXT:0034
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  STACK				  16  0100 Para	  Stack	  STACK
+  _DATA				  16  00CE Word	  Public  DATA
+_TEXT				  16  006A Word	  Public  CODE
+
